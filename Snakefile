@@ -175,36 +175,87 @@ rule purge:
 
 
 rule rulegraph:
+    """Generates Rule DAG in DOT, PDF, PNG, and SVG formats using complete configuration."""
     message:
-        "Creating RULEGRAPH dag of workflow."
+        "Creating RULEGRAPH dag in multiple formats using complete configuration."
     output:
         dot=resources("dag_rulegraph.dot"),
         pdf=resources("dag_rulegraph.pdf"),
         png=resources("dag_rulegraph.png"),
+        svg=resources("dag_rulegraph.svg"),
     conda:
         "envs/environment.yaml"
     shell:
         r"""
-        snakemake --rulegraph all | sed -n "/digraph/,\$p" > {output.dot}
-        dot -Tpdf -o {output.pdf} {output.dot}
-        dot -Tpng -o {output.png} {output.dot}
+        # Create temp file for complete configuration
+        CONFIG_FILE=$(mktemp --suffix=.json)
+        trap 'rm -f "$CONFIG_FILE"' EXIT
+        
+        # Export complete config to temp file - use snakemake --snakefile approach to access config
+        snakemake --snakefile <(echo 'import json; json.dump(config, open("'$CONFIG_FILE'", "w"))') --dryrun 2>/dev/null || true
+        
+        # Generate DOT file using the complete config
+        echo "[Rule rulegraph] Using complete configuration"
+        snakemake --rulegraph all --configfile "$CONFIG_FILE" --quiet | sed -n "/digraph/,\$p" > {output.dot}
+        
+        # Generate visualizations from the DOT file
+        if [ -s {output.dot} ]; then
+            echo "[Rule rulegraph] Generating PDF from DOT"
+            dot -Tpdf -o {output.pdf} {output.dot} || {{ echo "Error generating PDF"; exit 1; }}
+            
+            echo "[Rule rulegraph] Generating PNG from DOT"
+            dot -Tpng -o {output.png} {output.dot} || {{ echo "Error generating PNG"; exit 1; }}
+            
+            echo "[Rule rulegraph] Generating SVG from DOT"
+            dot -Tsvg -o {output.svg} {output.dot} || {{ echo "Error generating SVG"; exit 1; }}
+            
+            echo "[Rule rulegraph] Successfully generated all formats."
+        else
+            echo "[Rule rulegraph] Error: Empty DOT file generated" >&2
+            exit 1
+        fi
         """
 
-
 rule filegraph:
+    """Generates File DAG in DOT, PDF, PNG, and SVG formats using complete configuration."""
     message:
-        "Creating FILEGRAPH dag of workflow."
+        "Creating FILEGRAPH dag in multiple formats using complete configuration."
     output:
         dot=resources("dag_filegraph.dot"),
         pdf=resources("dag_filegraph.pdf"),
         png=resources("dag_filegraph.png"),
+        svg=resources("dag_filegraph.svg"),
     conda:
         "envs/environment.yaml"
     shell:
         r"""
-        snakemake --filegraph all | sed -n "/digraph/,\$p" > {output.dot}
-        dot -Tpdf -o {output.pdf} {output.dot}
-        dot -Tpng -o {output.png} {output.dot}
+        # Create temp file for complete configuration
+        CONFIG_FILE=$(mktemp --suffix=.json)
+        trap 'rm -f "$CONFIG_FILE"' EXIT
+        
+        # Export complete config to temp file - use snakemake --snakefile approach to access config
+        snakemake --snakefile <(echo 'import json; json.dump(config, open("'$CONFIG_FILE'", "w"))') --dryrun 2>/dev/null || true
+        
+        # Generate DOT file using the complete config
+        echo "[Rule filegraph] Using complete configuration"
+        snakemake --filegraph all --configfile "$CONFIG_FILE" --quiet | sed -n "/digraph/,\$p" > {output.dot}
+        
+        # Generate visualizations from the DOT file
+        if [ -s {output.dot} ]; then
+            echo "[Rule filegraph] Generating PDF from DOT"
+            dot -Tpdf -o {output.pdf} {output.dot} || {{ echo "Error generating PDF"; exit 1; }}
+            
+            echo "[Rule filegraph] Generating PNG from DOT"
+            dot -Tpng -o {output.png} {output.dot} || {{ echo "Error generating PNG"; exit 1; }}
+            
+            echo "[Rule filegraph] Generating SVG from DOT"
+            dot -Tsvg -o {output.svg} {output.dot} || {{ echo "Error generating SVG"; exit 1; }}
+            
+            echo "[Rule filegraph] Successfully generated all formats."
+        else
+            echo "[Rule filegraph] Error: Empty DOT file generated" >&2
+            exit 1
+        fi
         """
 
 
