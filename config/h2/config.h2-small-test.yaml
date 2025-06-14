@@ -254,4 +254,4 @@ solving:
     min_iterations: 1
     max_iterations: 6  # Limit iterations for myopic optimization
     
-  mem_mb: 60000  # Memory allocation (60 GB)
+  mem_mb: 100000  # Memory allocation (100 GB)
