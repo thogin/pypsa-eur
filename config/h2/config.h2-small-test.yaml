@@ -1,0 +1,257 @@
+# PyPSA-Eur Configuration for Hydrogen Infrastructure Test Run
+# This configuration is optimized for fast test runs while maintaining model validity
+
+# Run settings
+run:
+  name: "h2-test-myopic"  # Descriptive name for your test run
+  disable_progressbar: false
+  shared_resources:
+    policy: false  # Set to true to share resources between runs
+
+# Scenario settings
+scenario:
+  clusters:  # Use 37 nodes for minimal test run
+  - 37
+  opts:  # Additional constraints (empty for baseline)
+  - ''
+  sector_opts:  # Sector coupling options (empty for full optimization)
+  - ''
+  planning_horizons:  # Years to model
+  - 2025
+  - 2030
+  - 2040
+  - 2050
+
+# Countries to include (all European countries)
+countries: ['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 
+           'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'ME', 'MK', 
+           'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'SE', 'SI', 'SK', 'XK']
+
+# Time resolution settings (6-hour increments for faster runtime)
+snapshots:
+  start: "2013-01-01"
+  end: "2013-12-31"
+
+# Clustering settings
+clustering:
+  temporal:
+    resolution_elec: 6h  # 6-hour time resolution for electricity
+    resolution_sector: 6h  # 6-hour time resolution for other sectors
+
+# Foresight type (myopic for your pathway analysis)
+foresight: myopic
+
+# Electricity sector settings
+electricity:
+  voltages: [220., 300., 330., 380., 400., 500., 750.]  # All voltage levels
+  
+  # Technologies that can be built/expanded
+  extendable_carriers:
+    Generator: [solar, onwind, offwind-ac, offwind-dc, OCGT, CCGT]
+    StorageUnit: [battery]  # Coupled power/energy with max_hours ratio
+    Store: [H2]  # Separate energy storage (use with Link for power)
+    Link: [H2 pipeline]  # Hydrogen pipelines + charging/discharging for H2 Store
+  
+  # Storage energy/power ratios (for StorageUnit carrier types)
+  max_hours:
+    battery: 6      # 6 hours storage = typical grid battery
+    H2: 168         # 168 hours (1 week) storage = seasonal storage
+    # Note: This creates a fixed energy/power ratio. For independent optimization,
+    # use Store (for energy) + Link (for charging/discharging power)
+
+# Atlite settings for renewable profiles
+atlite:
+  default_cutout: europe-2013-sarah3-era5
+  
+# Renewable technology settings
+renewable:
+  onwind:
+    cutout: europe-2013-sarah3-era5
+  offwind-ac:
+    cutout: europe-2013-sarah3-era5
+    max_depth: 50
+  offwind-dc:
+    cutout: europe-2013-sarah3-era5
+    max_depth: 50
+  solar:
+    cutout: europe-2013-sarah3-era5
+
+# Load settings
+load:
+  power_statistics: true
+  
+# Biomass configuration
+biomass:
+  year: 2030
+  scenario: ENS_Med  # Medium biomass availability
+  classes:
+    solid biomass:  # Used for combustion/conversion
+    - Agricultural waste
+    - Fuelwood residues
+    - Secondary Forestry residues - woodchips
+    - Sawdust
+    - Residues from landscape care
+    biogas:  # Used for biogas production
+    - Manure solid, liquid
+    - Sludge
+    municipal solid waste:
+    - Municipal waste
+    not included:  # Excluded to avoid land-use conflicts
+    - Sugar from sugar beet
+    - Rape seed
+    - Sunflower, soya seed
+    - Bioethanol barley, wheat, grain maize, oats, other cereals and rye
+    - Miscanthus, switchgrass, RCG
+    - Willow
+    - Poplar
+    - FuelwoodRW
+    - C&P_RW
+  share_unsustainable_use_retained:  # Phase-out unsustainable biomass
+    2025: 0.66
+    2030: 0.33
+    2040: 0
+    2050: 0
+  share_sustainable_potential_available:  # Phase-in sustainable biomass
+    2025: 0.33
+    2030: 0.66
+    2040: 1
+    2050: 1
+  
+# Costs settings
+costs:
+  year: 2030  # Reference year for costs
+  version: v0.8.0
+  emission_prices:
+    enable: true
+    co2: 100  # EUR/tCO2 - carbon price to encourage clean technologies
+
+# Sector coupling settings (CRITICAL FOR HYDROGEN)
+sector:
+  # Activate full sector coupling
+  electricity: true
+  heating: true
+  biomass: true
+  industry: true
+  agriculture: true
+  fossil_fuels: true  # Include fossil fuel imports
+  
+  # Process emissions (important for industry decarbonization)
+  process_emissions: true  # Include process emissions from industry
+  
+  # Biomass settings
+  biomass_spatial: false  # Keep biomass aggregated for simplicity
+  biomass_transport: false  # No transport costs for biomass
+  biogas_upgrading_cc: true  # Allow carbon capture from biogas upgrading
+  solid_biomass_import:
+    enable: true  # Allow biomass imports
+    price: 54  # EUR/MWh
+    max_amount: 1390  # TWh
+  
+  # Biomass conversion options
+  biomass_to_liquid: false  # BtL (keep false for test)
+  biomass_to_liquid_cc: false  # BtL with CC
+  biosng: true  # Biomass to synthetic natural gas
+  biosng_cc: true  # BioSNG with carbon capture
+  bioH2: true  # Biomass to hydrogen
+  
+  # Municipal waste
+  municipal_solid_waste: true  # Include municipal solid waste as energy source
+  
+  # Hydrogen-specific settings
+  hydrogen_underground_storage: true  # Enable H2 underground storage
+  hydrogen_underground_storage_locations:
+    - nearshore  # Within 50 km of sea
+    - onshore    # More than 50 km from sea
+  
+  # Hydrogen network settings
+  H2_network: true  # Enable hydrogen pipeline network
+  H2_retrofit: true  # Allow retrofitting of gas pipelines
+  H2_retrofit_fraction: 0.6  # 60% of gas pipeline capacity can be retrofitted
+  
+  # Gas network (needed for H2 retrofitting analysis)
+  gas_network: true  # Model gas network spatially
+  
+  # Industry settings affecting H2 demand
+  ammonia: true  # Ammonia production (major H2 consumer)
+  hydrogen_turbine: true  # H2 turbines for re-electrification
+  hydrogen_fuel_cell: true  # Fuel cells for re-electrification
+  
+  # Process emissions that might need H2-based alternatives
+  process_emissions: true
+  
+  # Transport sector (creates H2 demand)
+  land_transport_fuel_cell_share:
+    2025: 0.0
+    2030: 0.05  # 5% fuel cell vehicles by 2030
+    2040: 0.15  # 15% by 2040
+    2050: 0.3   # 30% by 2050
+  
+  # Shipping H2 demand
+  shipping_hydrogen_share:
+    2025: 0.0
+    2030: 0.1   # 10% hydrogen shipping by 2030
+    2040: 0.3   # 30% by 2040
+    2050: 0.5   # 50% by 2050
+  
+  # Steel production transformation (creates H2 demand)
+  DRI_fraction:  # Direct Reduced Iron using H2
+    2025: 0.0
+    2030: 0.1   # 10% DRI by 2030
+    2040: 0.3   # 30% by 2040
+    2050: 0.5   # 50% by 2050
+  
+  # Carbon management (affects H2 demand for synfuels)
+  co2_sequestration_potential: 200  # MtCO2/a
+  co2_sequestration_cost: 20  # EUR/tCO2
+  co2_spatial: true  # Track CO2 flows spatially
+  co2_network: true  # Model CO2 pipeline network
+  
+  # Synthetic fuel options (create H2 demand)
+  methanation: true  # H2 + CO2 -> CH4
+  helmeth: false  # Direct power-to-methane
+  methanol: true  # H2-based methanol production
+  
+  # Heat sector options
+  district_heating:
+    enable: true
+    potential: 0.6  # 60% of urban demand can be district heating
+
+# Industry demand settings
+industry:
+  St_primary_fraction:  # Primary steel production fraction
+    2025: 0.9
+    2030: 0.8
+    2040: 0.6
+    2050: 0.4
+  
+  # Oil refining emissions
+  oil_refining_emissions:  # Process emissions from oil refining
+    2025: 1.0
+    2030: 0.9
+    2040: 0.7
+    2050: 0.5
+
+# Solving settings
+solving:
+  solver:
+    name: gurobi  # Since you have Gurobi
+    options: gurobi-numeric-focus
+    crossover: 0
+    BarConvTol: 1.0e-4
+    FeasibilityTol: 1.0e-5
+    
+  solver_options:
+    gurobi-numeric-focus:
+      NumericFocus: 2  # Helps with numerical stability
+      Method: 2  # Barrier method
+      BarHomogeneous: 1
+      Crossover: 0
+  
+  options:
+    load_shedding: true  # Allow load shedding as last resort
+    noisy_costs: true  # Add small random noise to break ties
+    skip_iterations: true  # Skip iterations that don't converge
+    min_iterations: 1
+    max_iterations: 6  # Limit iterations for myopic optimization
+    
+  mem_mb: 60000  # Memory allocation (60 GB)

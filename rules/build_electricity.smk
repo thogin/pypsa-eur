@@ -98,7 +98,7 @@ rule base_network:
         benchmarks("base_network")
     threads: 4
     resources:
-        mem_mb=1500,
+        mem_mb=20000, # failed with 1500 MB
     conda:
         "../envs/environment.yaml"
     script:
